@@ -7,6 +7,7 @@ import {
   deleteUser,
   listAdminProducts,
   updateProductStatus,
+  updateProductModeration,
   deleteProductAdmin,
   updateOrderStatusAdmin,
   deleteOrderAdmin,
@@ -26,6 +27,7 @@ router.patch('/users/:id/approval', updateUserApproval);
 router.delete('/users/:id', deleteUser);
 router.get('/products', listAdminProducts);
 router.patch('/products/:id/status', updateProductStatus);
+router.patch('/products/:id/moderation', updateProductModeration);
 router.delete('/products/:id', deleteProductAdmin);
 router.patch('/orders/:id/status', updateOrderStatusAdmin);
 router.delete('/orders/:id', deleteOrderAdmin);

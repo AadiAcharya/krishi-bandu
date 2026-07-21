@@ -15,6 +15,11 @@ const productSchema = new mongoose.Schema(
     imageUrl: { type: String, trim: true },
     listingType: { type: String, enum: ['retail', 'bulk'], default: 'retail' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    // Listings are approved by default — trust is established once at the
+    // account level (see User.approvalStatus), not re-checked per listing.
+    // Admins flag a listing reactively by setting this to 'rejected', which
+    // also hides it; clearing the flag (back to 'approved') restores it.
+    moderationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
   },
   { timestamps: true }
 );

@@ -90,6 +90,11 @@ export const createProduct = asyncHandler(async (req, res) => {
   const data = pickEditableFields(req.body);
   validateListingInput(data);
 
+  // Listings go live immediately (moderationStatus defaults to 'approved' at
+  // the schema level) — sellers are already vetted at the account level, so
+  // re-reviewing every individual post would just be busywork. Admins flag
+  // (reject) listings reactively instead of pre-approving each one.
+  // moderationStatus itself is never seller-editable (excluded from EDITABLE_FIELDS).
   const product = await Product.create({ ...data, seller: req.user._id });
   res.status(201).json(product);
 });

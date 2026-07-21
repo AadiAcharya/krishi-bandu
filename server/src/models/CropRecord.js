@@ -8,6 +8,7 @@ const cropRecordSchema = new mongoose.Schema(
     areaRopani: { type: Number, required: true },
     productionKg: { type: Number, required: true },
     avgPrice: { type: Number, required: true },
+    expense: { type: Number, default: 0, min: 0 },
     trend: { type: String, enum: ['up', 'down', 'flat'], default: 'flat' },
     season: { type: String },
   },

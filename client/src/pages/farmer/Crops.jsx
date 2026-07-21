@@ -5,7 +5,7 @@ import api from '../../api/client.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import Trend from '../../components/Trend.jsx';
 
-const EMPTY_FORM = { crop: '', variety: '', areaRopani: '', productionKg: '', avgPrice: '', season: '' };
+const EMPTY_FORM = { crop: '', variety: '', areaRopani: '', productionKg: '', avgPrice: '', expense: '', season: '' };
 
 export default function Crops() {
   const { notify } = useToast();
@@ -33,6 +33,7 @@ export default function Crops() {
       areaRopani: r.areaRopani,
       productionKg: r.productionKg,
       avgPrice: r.avgPrice,
+      expense: r.expense || '',
       season: r.season || '',
     });
     setShowForm(true);
@@ -52,6 +53,7 @@ export default function Crops() {
       areaRopani: Number(form.areaRopani),
       productionKg: Number(form.productionKg),
       avgPrice: Number(form.avgPrice),
+      expense: Number(form.expense) || 0,
     };
     try {
       if (editingId) {
@@ -110,6 +112,7 @@ export default function Crops() {
           <input required type="number" placeholder="Area (Ropani)" value={form.areaRopani} onChange={(e) => update('areaRopani', e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           <input required type="number" placeholder="Production (kg)" value={form.productionKg} onChange={(e) => update('productionKg', e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           <input required type="number" placeholder="Avg. Price (Rs./kg)" value={form.avgPrice} onChange={(e) => update('avgPrice', e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <input type="number" placeholder="Expense (Rs.) — seeds, fertilizer, labor, etc." value={form.expense} onChange={(e) => update('expense', e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-2" />
           <button disabled={saving} type="submit" className="sm:col-span-3 rounded-lg bg-primary-600 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
             {saving ? 'Saving...' : editingId ? 'Update Record' : 'Save Record'}
           </button>
@@ -126,12 +129,17 @@ export default function Crops() {
               <th className="px-4 py-3 font-medium">Area (Ropani)</th>
               <th className="px-4 py-3 font-medium">Production (kg)</th>
               <th className="px-4 py-3 font-medium">Avg. Price (Rs./kg)</th>
+              <th className="px-4 py-3 font-medium">Expense (Rs.)</th>
+              <th className="px-4 py-3 font-medium">Net Profit (Rs.)</th>
               <th className="px-4 py-3 font-medium">Trend</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {records.map((r) => (
+            {records.map((r) => {
+              const revenue = r.productionKg * r.avgPrice;
+              const netProfit = revenue - (r.expense || 0);
+              return (
               <tr key={r._id} className="border-t border-gray-100">
                 <td className="px-4 py-3 font-medium text-gray-800">{r.crop}</td>
                 <td className="px-4 py-3 text-gray-600">{r.variety || '—'}</td>
@@ -139,6 +147,8 @@ export default function Crops() {
                 <td className="px-4 py-3 text-gray-600">{r.areaRopani}</td>
                 <td className="px-4 py-3 text-gray-600">{r.productionKg}</td>
                 <td className="px-4 py-3 text-gray-600">{r.avgPrice}</td>
+                <td className="px-4 py-3 text-gray-600">{r.expense || 0}</td>
+                <td className={`px-4 py-3 font-medium ${netProfit >= 0 ? 'text-primary-700' : 'text-red-600'}`}>{netProfit}</td>
                 <td className="px-4 py-3">
                   <Trend trend={r.trend} />
                 </td>
@@ -153,10 +163,11 @@ export default function Crops() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {records.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                   No crop records yet. Add your first one above.
                 </td>
               </tr>

@@ -6,6 +6,11 @@ const ACTIONS = [
   'user.suspended',
   'user.activated',
   'user.deleted',
+  'listing.approved',
+  'listing.rejected',
+  'listing.activated',
+  'listing.deactivated',
+  'listing.deleted',
 ];
 
 const activityLogSchema = new mongoose.Schema(
@@ -13,9 +18,11 @@ const activityLogSchema = new mongoose.Schema(
     admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     adminName: { type: String, required: true },
     action: { type: String, enum: ACTIONS, required: true },
-    targetUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    // Snapshot of the target's name/email so the log stays readable even if
-    // the account is later deleted (a populated ref would just return null).
+    targetType: { type: String, enum: ['User', 'Product'], default: null },
+    targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    // Snapshot of the target's name/email (or listing name) so the log stays
+    // readable even if the record is later deleted (a populated ref would
+    // just return null).
     targetLabel: { type: String, default: '' },
     details: { type: String, trim: true, default: '' },
   },

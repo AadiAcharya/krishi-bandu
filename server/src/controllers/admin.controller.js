@@ -43,7 +43,8 @@ export async function updateUserStatus(req, res) {
   await logActivity({
     admin: req.user,
     action: status === 'active' ? 'user.activated' : 'user.suspended',
-    targetUser: user,
+    target: user,
+    targetType: 'User',
   });
 
   res.json(user);
@@ -82,7 +83,8 @@ export async function updateUserApproval(req, res) {
     await logActivity({
       admin: req.user,
       action: approvalStatus === 'approved' ? 'user.approved' : 'user.rejected',
-      targetUser: user,
+      target: user,
+      targetType: 'User',
       details: approvalStatus === 'rejected' ? user.rejectionReason : '',
     });
   }
@@ -103,7 +105,7 @@ export async function deleteUser(req, res) {
   if (!target) return res.status(404).json({ message: 'User not found' });
   if (target.role === 'admin') return res.status(403).json({ message: 'Cannot delete an admin account' });
 
-  await logActivity({ admin: req.user, action: 'user.deleted', targetUser: target });
+  await logActivity({ admin: req.user, action: 'user.deleted', target, targetType: 'User' });
   await target.deleteOne();
   res.json({ message: 'User deleted' });
 }
@@ -117,12 +119,56 @@ export async function updateProductStatus(req, res) {
   const { status } = req.body;
   const product = await Product.findByIdAndUpdate(req.params.id, { status }, { new: true });
   if (!product) return res.status(404).json({ message: 'Product not found' });
+
+  await logActivity({
+    admin: req.user,
+    action: status === 'active' ? 'listing.activated' : 'listing.deactivated',
+    target: product,
+    targetType: 'Product',
+  });
+
+  res.json(product);
+}
+
+export async function updateProductModeration(req, res) {
+  const { moderationStatus } = req.body;
+  const validStatuses = ['pending', 'approved', 'rejected'];
+  if (!validStatuses.includes(moderationStatus)) {
+    return res.status(400).json({ message: 'Invalid moderation status' });
+  }
+
+  const product = await Product.findById(req.params.id);
+  if (!product) return res.status(404).json({ message: 'Product not found' });
+
+  const wasFlagged = product.moderationStatus === 'rejected';
+  product.moderationStatus = moderationStatus;
+  // A flagged listing shouldn't stay visible; clearing the flag restores it
+  // in one click rather than requiring a separate "unhide" step.
+  if (moderationStatus === 'rejected') {
+    product.status = 'inactive';
+  } else if (moderationStatus === 'approved' && wasFlagged) {
+    product.status = 'active';
+  }
+  await product.save();
+
+  if (moderationStatus === 'approved' || moderationStatus === 'rejected') {
+    await logActivity({
+      admin: req.user,
+      action: moderationStatus === 'approved' ? 'listing.approved' : 'listing.rejected',
+      target: product,
+      targetType: 'Product',
+    });
+  }
+
   res.json(product);
 }
 
 export async function deleteProductAdmin(req, res) {
   const product = await Product.findByIdAndDelete(req.params.id);
   if (!product) return res.status(404).json({ message: 'Product not found' });
+
+  await logActivity({ admin: req.user, action: 'listing.deleted', target: product, targetType: 'Product' });
+
   res.json({ message: 'Product deleted' });
 }
 

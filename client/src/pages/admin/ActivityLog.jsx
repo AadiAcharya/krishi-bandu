@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { CheckCircle2, XCircle, UserX, UserCheck, Trash2, EyeOff, Eye, Package, Flag } from 'lucide-react';
 import api from '../../api/client.js';
 import { useToast } from '../../context/ToastContext.jsx';
 
@@ -9,6 +9,11 @@ const ACTION_META = {
   'user.suspended': { label: 'Suspended account', icon: UserX, style: 'bg-amber-100 text-amber-700' },
   'user.activated': { label: 'Activated account', icon: UserCheck, style: 'bg-primary-100 text-primary-700' },
   'user.deleted': { label: 'Deleted account', icon: Trash2, style: 'bg-gray-200 text-gray-700' },
+  'listing.approved': { label: 'Approved listing', icon: CheckCircle2, style: 'bg-green-100 text-green-700' },
+  'listing.rejected': { label: 'Flagged listing', icon: Flag, style: 'bg-red-100 text-red-700' },
+  'listing.activated': { label: 'Unhid listing', icon: Eye, style: 'bg-primary-100 text-primary-700' },
+  'listing.deactivated': { label: 'Hid listing', icon: EyeOff, style: 'bg-amber-100 text-amber-700' },
+  'listing.deleted': { label: 'Removed listing', icon: Package, style: 'bg-gray-200 text-gray-700' },
 };
 
 export default function ActivityLog() {

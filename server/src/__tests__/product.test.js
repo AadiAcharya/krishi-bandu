@@ -203,6 +203,57 @@ describe('GET /api/products (buyer marketplace)', () => {
     expect(products.body[0].name).toBe('A Crop');
   });
 
+  it('searches by keyword across name, variety, and description', async () => {
+    const { token } = await registerUser();
+    await request(app)
+      .post('/api/products')
+      .set('Authorization', `Bearer ${token}`)
+      .send(validListing({ name: 'Fresh Cauliflower', variety: 'Snowball', description: 'Locally grown.' }));
+    await request(app)
+      .post('/api/products')
+      .set('Authorization', `Bearer ${token}`)
+      .send(validListing({ name: 'Sweet Potato', variety: 'Orange', description: 'Grown in cauliflower rotation fields.' }));
+    await request(app)
+      .post('/api/products')
+      .set('Authorization', `Bearer ${token}`)
+      .send(validListing({ name: 'Rice', variety: 'Basmati', description: 'Aromatic long-grain rice.' }));
+
+    const byName = await request(app).get('/api/products').query({ search: 'cauliflower' });
+    expect(byName.body.map((p) => p.name).sort()).toEqual(['Fresh Cauliflower', 'Sweet Potato']);
+
+    const byVariety = await request(app).get('/api/products').query({ search: 'basmati' });
+    expect(byVariety.body).toHaveLength(1);
+    expect(byVariety.body[0].name).toBe('Rice');
+  });
+
+  it('treats regex special characters in search as literal text instead of erroring', async () => {
+    const { token } = await registerUser();
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing());
+
+    const res = await request(app).get('/api/products').query({ search: 'toma+toes(' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('filters by price range', async () => {
+    const { token } = await registerUser();
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing({ name: 'Cheap Crop', pricePerKg: 10 }));
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing({ name: 'Mid Crop', pricePerKg: 50 }));
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing({ name: 'Pricey Crop', pricePerKg: 200 }));
+
+    const res = await request(app).get('/api/products').query({ minPrice: 20, maxPrice: 100 });
+    expect(res.body.map((p) => p.name)).toEqual(['Mid Crop']);
+  });
+
+  it('filters by minimum available quantity', async () => {
+    const { token } = await registerUser();
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing({ name: 'Low Stock', availableQty: 3 }));
+    await request(app).post('/api/products').set('Authorization', `Bearer ${token}`).send(validListing({ name: 'High Stock', availableQty: 50 }));
+
+    const res = await request(app).get('/api/products').query({ minQty: 10 });
+    expect(res.body.map((p) => p.name)).toEqual(['High Stock']);
+  });
+
   it('excludes listings marked inactive', async () => {
     const { token, user } = await registerUser();
     const created = await request(app)

@@ -19,6 +19,10 @@ const EDITABLE_FIELDS = [
 const PRODUCT_CATEGORIES = ['Crops', 'Seeds', 'Organic', 'Tools'];
 const SERVICE_CATEGORIES = ['Tractor Service', 'Labor', 'Irrigation', 'Veterinary', 'Consultation', 'Other'];
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function pickEditableFields(body) {
   const data = {};
   for (const field of EDITABLE_FIELDS) {
@@ -65,11 +69,23 @@ function validateListingInput(data, { partial = false } = {}) {
 }
 
 export const listProducts = asyncHandler(async (req, res) => {
-  const { category, search, offerType } = req.query;
+  const { category, search, offerType, minPrice, maxPrice, minQty } = req.query;
   const filter = { status: 'active', availableQty: { $gt: 0 } };
   if (offerType && offerType !== 'All') filter.offerType = offerType;
   if (category && category !== 'All') filter.category = category;
-  if (search) filter.name = { $regex: search, $options: 'i' };
+
+  if (search && search.trim()) {
+    const regex = { $regex: escapeRegExp(search.trim()), $options: 'i' };
+    filter.$or = [{ name: regex }, { variety: regex }, { description: regex }, { category: regex }];
+  }
+
+  const min = Number(minPrice);
+  const max = Number(maxPrice);
+  if (minPrice !== undefined && !Number.isNaN(min)) filter.pricePerKg = { ...filter.pricePerKg, $gte: min };
+  if (maxPrice !== undefined && !Number.isNaN(max)) filter.pricePerKg = { ...filter.pricePerKg, $lte: max };
+
+  const qty = Number(minQty);
+  if (minQty !== undefined && !Number.isNaN(qty) && qty > 0) filter.availableQty = { $gte: qty };
 
   const products = await Product.find(filter).populate('seller', 'name location').sort({ createdAt: -1 });
   res.json(products);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Sprout, Wrench } from 'lucide-react';
+import { Search, Sprout, Wrench, X } from 'lucide-react';
 import api, { getErrorMessage } from '../../api/client.js';
 import { mediaUrl } from '../../utils/mediaUrl.js';
 
@@ -16,13 +16,23 @@ const CATEGORY_OPTIONS = {
   service: ['All', 'Tractor Service', 'Labor', 'Irrigation', 'Veterinary', 'Consultation', 'Other'],
 };
 
+const EMPTY_RANGE = { minPrice: '', maxPrice: '', minQty: '' };
+
 export default function Browse() {
   const [products, setProducts] = useState([]);
   const [offerType, setOfferType] = useState('All');
   const [category, setCategory] = useState('All');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [range, setRange] = useState(EMPTY_RANGE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Debounce the free-text search so we're not firing a request on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +40,9 @@ export default function Browse() {
     if (offerType !== 'All') params.offerType = offerType;
     if (category !== 'All') params.category = category;
     if (search) params.search = search;
+    if (range.minPrice !== '') params.minPrice = range.minPrice;
+    if (range.maxPrice !== '') params.maxPrice = range.maxPrice;
+    if (range.minQty !== '') params.minQty = range.minQty;
 
     setLoading(true);
     setError('');
@@ -48,11 +61,26 @@ export default function Browse() {
     return () => {
       active = false;
     };
-  }, [offerType, category, search]);
+  }, [offerType, category, search, range]);
 
   function selectOfferType(value) {
     setOfferType(value);
     setCategory('All');
+  }
+
+  function updateRange(key, value) {
+    setRange((r) => ({ ...r, [key]: value }));
+  }
+
+  const filtersActive =
+    offerType !== 'All' || category !== 'All' || search !== '' || range.minPrice !== '' || range.maxPrice !== '' || range.minQty !== '';
+
+  function clearFilters() {
+    setOfferType('All');
+    setCategory('All');
+    setSearchInput('');
+    setSearch('');
+    setRange(EMPTY_RANGE);
   }
 
   return (
@@ -65,9 +93,9 @@ export default function Browse() {
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search products or services..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by name, variety, or description..."
           className="w-full rounded-full border border-gray-300 py-2.5 pl-9 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         />
       </div>
@@ -102,6 +130,53 @@ export default function Browse() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3">
+        <span className="text-xs font-medium text-gray-500">Price (Rs)</span>
+        <input
+          type="number"
+          min="0"
+          placeholder="Min"
+          value={range.minPrice}
+          onChange={(e) => updateRange('minPrice', e.target.value)}
+          className="w-20 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm"
+        />
+        <span className="text-gray-300">–</span>
+        <input
+          type="number"
+          min="0"
+          placeholder="Max"
+          value={range.maxPrice}
+          onChange={(e) => updateRange('maxPrice', e.target.value)}
+          className="w-20 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm"
+        />
+
+        <span className="ml-2 text-xs font-medium text-gray-500">Min. available</span>
+        <input
+          type="number"
+          min="0"
+          placeholder="e.g. 5"
+          value={range.minQty}
+          onChange={(e) => updateRange('minQty', e.target.value)}
+          className="w-24 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm"
+        />
+
+        {filtersActive && (
+          <button
+            onClick={clearFilters}
+            className="ml-auto flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline"
+          >
+            <X size={13} /> Clear filters
+          </button>
+        )}
+      </div>
+
+      {!loading && !error && (
+        <p className="text-sm text-gray-500">
+          {products.length} {products.length === 1 ? 'result' : 'results'}
+          {search && <> for &quot;{search}&quot;</>}
+        </p>
+      )}
+
       {loading && <p className="py-10 text-center text-gray-400">Loading listings...</p>}
 
       {!loading && error && (
@@ -120,10 +195,18 @@ export default function Browse() {
               <p className="mt-1 text-sm font-bold text-primary-700">
                 Rs {p.pricePerKg} / {p.unit || 'kg'}
               </p>
+              <p className="text-xs text-gray-500">{p.availableQty} {p.unit || 'kg'} available</p>
             </Link>
           ))}
           {products.length === 0 && (
-            <p className="col-span-full py-10 text-center text-gray-400">No listings found.</p>
+            <div className="col-span-full py-10 text-center text-gray-400">
+              <p>No listings match your filters.</p>
+              {filtersActive && (
+                <button onClick={clearFilters} className="mt-2 text-sm font-semibold text-primary-600 hover:underline">
+                  Clear filters and try again
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
